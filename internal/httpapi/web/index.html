@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Private, real-time community parking availability.">
+  <title>NeighborParking</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/forms.css">
+</head>
+<body>
+  <div id="toast-region" class="toasts" aria-live="polite"></div>
+  <header class="site-header">
+    <a class="brand" href="#/" aria-label="NeighborParking home">
+      <span class="brand-mark">NP</span>
+      <span><strong>Neighbor</strong>Parking<small>Community spaces, clearly shared.</small></span>
+    </a>
+    <nav id="top-nav" class="top-nav hidden">
+      <button class="button ghost" data-action="dashboard">Communities</button>
+      <button class="avatar-button" data-action="profile" aria-label="Open profile"><span id="avatar">U</span></button>
+      <button class="button outline" data-action="logout">Sign out</button>
+    </nav>
+  </header>
+
+  <main id="app" tabindex="-1">
+    <section class="loading-screen"><div class="spinner"></div><p>Preparing your spaces…</p></section>
+  </main>
+
+  <dialog id="modal"><div class="modal-card"><button type="button" class="modal-close" aria-label="Close">×</button><div id="modal-body"></div></div></dialog>
+
+  <template id="auth-template">
+    <section class="auth-shell">
+      <div class="auth-story">
+        <span class="eyebrow">A calmer arrival</span>
+        <h1>Know where to park<br><em>before you turn in.</em></h1>
+        <p>A private, live parking board made for the people who share your community.</p>
+        <div class="mini-map" aria-hidden="true">
+          <i class="road"></i><i class="free">A1</i><i class="busy">A2</i><i class="free">A3</i><i class="road"></i><i class="gate">IN</i><i class="road"></i><i class="busy">B1</i><i class="free">B2</i><i class="road"></i>
+        </div>
+      </div>
+      <div class="auth-card">
+        <div class="tabs" role="tablist"><button class="tab active" data-auth-tab="login">Sign in</button><button class="tab" data-auth-tab="register">Create account</button></div>
+        <form id="login-form" class="stack">
+          <div><span class="eyebrow">Welcome back</span><h2>Sign in to your communities</h2></div>
+          <label>Email<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="••••••••"></label>
+          <button class="button primary wide">Sign in</button>
+        </form>
+        <form id="register-form" class="stack hidden">
+          <div><span class="eyebrow">Join your neighbors</span><h2>Create your account</h2></div>
+          <div class="form-grid"><label>Full name<input name="fullName" required minlength="2"></label><label>Email<input name="email" type="email" required></label></div>
+          <div class="form-grid"><label>Phone<input name="phone" required></label><label>Password<input name="password" type="password" required minlength="8"></label></div>
+          <div class="form-grid"><label>Vehicle model<input name="vehicleName" required placeholder="Toyota Corolla"></label><label>License plate<input name="licensePlate" required placeholder="DHAKA-12-3456"></label></div>
+          <button class="button primary wide">Create account</button>
+        </form>
+      </div>
+    </section>
+  </template>
+
+  <template id="dashboard-template">
+    <section class="page-shell">
+      <div class="hero-row"><div><span class="eyebrow">Your neighborhood network</span><h1>Good evening, <span id="welcome-name"></span>.</h1><p>Every community you belong to, one calm view.</p></div><div class="actions"><button class="button outline" data-action="join">Find a community</button><button class="button primary" data-action="create">Create community</button></div></div>
+      <section class="summary-strip"><div><strong id="community-count">0</strong><span>Communities</span></div><div><strong id="available-count">0</strong><span>Spaces open now</span></div><div><strong id="managed-count">0</strong><span>Managed by you</span></div></section>
+      <div class="section-title"><div><span class="eyebrow">Live overview</span><h2>Your communities</h2></div></div>
+      <div id="community-grid" class="community-grid"></div>
+    </section>
+  </template>
+
+  <template id="community-template">
+    <section class="community-page">
+      <div class="community-bar"><button class="back-link" data-action="dashboard">← All communities</button><div class="community-heading"><div><span id="community-role" class="role-pill"></span><h1 id="community-name"></h1><p id="community-address"></p></div><div class="live-state"><i></i><span>Live</span><small id="socket-state">Connecting…</small></div></div><nav class="subnav"><button class="active" data-community-tab="map">Parking map</button><button data-community-tab="members">Members</button><button data-community-tab="requests" class="admin-only">Requests</button><button data-community-tab="designer" class="admin-only">Grid designer</button></nav></div>
+      <div class="community-content">
+        <section id="tab-map" class="tab-panel"><div class="map-toolbar"><div class="legend"><span><i class="dot available"></i>Available</span><span><i class="dot occupied"></i>Occupied</span><span><i class="dot structure"></i>Road / structure</span></div><button class="button ghost" data-action="refresh-map">Refresh</button></div><div class="map-stage"><div id="parking-grid" class="parking-grid"></div></div><aside class="map-summary"><div><span>Available now</span><strong id="map-available">0</strong></div><div><span>Occupied</span><strong id="map-occupied">0</strong></div><div><span>Total spaces</span><strong id="map-total">0</strong></div></aside></section>
+        <section id="tab-members" class="tab-panel hidden"><div class="section-title"><div><span class="eyebrow">People and vehicles</span><h2>Community members</h2></div><button class="button outline" data-action="leave">Leave community</button></div><div id="members-list" class="table-card"></div></section>
+        <section id="tab-requests" class="tab-panel hidden"><div class="section-title"><div><span class="eyebrow">Private by design</span><h2>Pending requests</h2></div></div><div id="requests-list" class="request-grid"></div></section>
+        <section id="tab-designer" class="tab-panel hidden"><div class="designer-header"><div><span class="eyebrow">Shape the space</span><h2>Parking grid designer</h2><p>Select a tool, then paint cells. Parking cells will ask for a name.</p></div><div class="actions"><button class="button outline" data-action="reset-layout">Revert</button><button class="button primary" data-action="save-layout">Save layout</button></div></div><div class="designer-settings"><label>Rows<input id="grid-rows" type="number" min="1" max="50"></label><label>Columns<input id="grid-cols" type="number" min="1" max="50"></label><div id="tool-palette" class="tool-palette"></div></div><div class="map-stage designer-stage"><div id="designer-grid" class="parking-grid designer-grid"></div></div></section>
+      </div>
+    </section>
+  </template>
+
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

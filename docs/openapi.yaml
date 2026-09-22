@@ -1,0 +1,176 @@
+openapi: 3.1.0
+info:
+  title: NeighborParking API
+  version: 1.0.0
+  description: Private community parking, membership, grid-layout, and real-time occupancy API.
+servers:
+  - url: /api/v1
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: np_session
+  parameters:
+    CommunityId: {in: path, name: communityId, required: true, schema: {type: string}}
+    MembershipId: {in: path, name: membershipId, required: true, schema: {type: string}}
+    SlotId: {in: path, name: slotId, required: true, schema: {type: string}}
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: {type: string}
+            message: {type: string}
+    User:
+      type: object
+      properties:
+        id: {type: string}
+        fullName: {type: string}
+        email: {type: string, format: email}
+        phone: {type: string}
+        vehicleName: {type: string}
+        licensePlate: {type: string}
+    MapCell:
+      type: object
+      required: [row, col, type]
+      properties:
+        row: {type: integer, minimum: 0}
+        col: {type: integer, minimum: 0}
+        type: {type: string, enum: [EMPTY, PARKING, ROAD, ENTRY_GATE, EXIT_GATE, WALL, PILLAR, NO_PARKING]}
+        label: {type: string}
+        slotId: {type: string}
+        status: {type: string, enum: [AVAILABLE, OCCUPIED]}
+paths:
+  /health:
+    get:
+      summary: Database-aware health check
+      responses: {'200': {description: Healthy}, '503': {description: Database unavailable}}
+  /auth/register:
+    post:
+      summary: Create an account and authenticated session
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [fullName,email,password,phone,vehicleName,licensePlate]}}}}
+      responses: {'201': {description: Registered}, '409': {description: Email already exists}}
+  /auth/login:
+    post:
+      summary: Create an authenticated session
+      responses: {'200': {description: Signed in}, '401': {description: Invalid credentials}}
+  /auth/refresh:
+    post:
+      summary: Rotate an active session token
+      responses: {'200': {description: Session renewed}, '401': {description: Missing or expired session}}
+  /auth/logout:
+    post:
+      summary: Revoke the current session
+      responses: {'204': {description: Signed out}}
+  /me:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Current profile
+      responses: {'200': {description: Profile}}
+    patch:
+      security: [{sessionCookie: []}]
+      summary: Update current profile
+      responses: {'200': {description: Updated}}
+  /dashboard/communities:
+    get:
+      security: [{sessionCookie: []}]
+      summary: All approved communities for the current user
+      responses: {'200': {description: Community cards}}
+  /communities/search:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Safely discover communities by name or code
+      parameters: [{in: query, name: q, required: true, schema: {type: string}}]
+      responses: {'200': {description: Public-safe results}}
+  /communities:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Create a community and owner membership
+      responses: {'201': {description: Created}}
+  /communities/{communityId}:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Get private community details
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'200': {description: Community}, '404': {description: Missing or concealed}}
+  /communities/{communityId}/map:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Get merged visual layout and live occupancy snapshot
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'200': {description: Live map}}
+  /communities/{communityId}/members:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Role-filtered approved-member directory
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'200': {description: Members}}
+  /communities/{communityId}/join-requests:
+    get:
+      security: [{sessionCookie: []}]
+      summary: List pending requests (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'200': {description: Pending requests}}
+    post:
+      security: [{sessionCookie: []}]
+      summary: Request membership
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'201': {description: Requested}, '409': {description: Duplicate or existing membership}}
+  /communities/{communityId}/join-requests/{membershipId}/approve:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Approve pending membership (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/MembershipId'}]
+      responses: {'200': {description: Approved}}
+  /communities/{communityId}/join-requests/{membershipId}/reject:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Reject pending membership (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/MembershipId'}]
+      responses: {'200': {description: Rejected}}
+  /communities/{communityId}/leave:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Leave when not owner or actively parked
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'204': {description: Left}, '409': {description: Ownership or occupancy conflict}}
+  /communities/{communityId}/layout:
+    put:
+      security: [{sessionCookie: []}]
+      summary: Atomically save a version-checked grid (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'200': {description: Saved}, '409': {description: Version or occupied-cell conflict}}
+  /communities/{communityId}/slots/{slotId}/check-in:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Occupy an available spot
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/SlotId'}]
+      responses: {'201': {description: Checked in}, '409': {description: Slot or user already occupied}}
+  /communities/{communityId}/slots/{slotId}/check-out:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Release the current user's spot
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/SlotId'}]
+      responses: {'200': {description: Checked out}, '403': {description: Not the occupant}}
+  /communities/{communityId}/slots/{slotId}/force-check-in:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Assign an approved member (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/SlotId'}]
+      responses: {'201': {description: Assigned}}
+  /communities/{communityId}/slots/{slotId}/force-check-out:
+    post:
+      security: [{sessionCookie: []}]
+      summary: Release any occupied spot (admin)
+      parameters: [{$ref: '#/components/parameters/CommunityId'}, {$ref: '#/components/parameters/SlotId'}]
+      responses: {'200': {description: Released}}
+  /ws/communities/{communityId}:
+    get:
+      security: [{sessionCookie: []}]
+      summary: Upgrade to a community-scoped WebSocket
+      parameters: [{$ref: '#/components/parameters/CommunityId'}]
+      responses: {'101': {description: Switching Protocols}}

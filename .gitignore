@@ -1,0 +1,142 @@
+# -----------------------------------------------------------------------------
+# Secrets and environment-specific configuration
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env
+*.local
+*.secret
+*.secrets
+secrets/
+private/
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# -----------------------------------------------------------------------------
+# Private planning, AI-agent, and prompt-generation material
+# Keep these files locally; they are not part of the public product source.
+# -----------------------------------------------------------------------------
+NEIGHBORPARKING_MASTER_PROMPT.md
+*_PROMPT.md
+*_prompt.md
+PROMPT*.md
+prompt*.md
+prompts/
+.prompts/
+personal/
+notes/
+AGENTS.md
+CLAUDE.md
+.agents/
+.codex/
+.claude/
+.cursor/
+
+# -----------------------------------------------------------------------------
+# Go build products, test binaries, coverage, and profiling
+# -----------------------------------------------------------------------------
+bin/
+build/
+dist/
+out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+coverage-*.out
+coverage*.html
+*.coverprofile
+*.prof
+*.pprof
+
+# -----------------------------------------------------------------------------
+# Local dependency, tool, and application caches
+# -----------------------------------------------------------------------------
+.tools/
+.cache/
+.tmp/
+tmp/
+temp/
+node_modules/
+
+# -----------------------------------------------------------------------------
+# Local runtime data, database files, dumps, backups, and logs
+# SQL migrations remain tracked because this section does not ignore *.sql.
+# -----------------------------------------------------------------------------
+data/
+logs/
+backups/
+*.log
+*.log.*
+*.pid
+*.pid.lock
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.bak
+*.backup
+
+# -----------------------------------------------------------------------------
+# Local Docker Compose overrides
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+
+# -----------------------------------------------------------------------------
+# IDEs and editors
+# -----------------------------------------------------------------------------
+.idea/
+.vscode/
+.vs/
+*.iml
+*.code-workspace
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# Operating-system metadata
+# -----------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# Temporary archives and patch/reject files
+# -----------------------------------------------------------------------------
+*.tmp
+*.temp
+*.orig
+*.rej
+*.patch
+*.zip
+*.tar
+*.tar.gz
+*.7z

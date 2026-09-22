@@ -1,0 +1,38 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: neighborparking
+      MYSQL_USER: neighborparking
+      MYSQL_PASSWORD: neighborparking
+      MYSQL_ROOT_PASSWORD: local-root-password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./migrations/001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uneighborparking", "-pneighborparking", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    environment:
+      APP_ENV: development
+      HTTP_ADDR: :8080
+      DATABASE_URL: neighborparking:neighborparking@tcp(mysql:3306)/neighborparking?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci
+      SESSION_TTL: 168h
+      COOKIE_SECURE: "false"
+      ALLOWED_ORIGIN: http://localhost:8080
+      AUDIT_WORKERS: 2
+      AUDIT_BUFFER: 256
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
