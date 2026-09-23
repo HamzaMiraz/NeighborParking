@@ -15,7 +15,7 @@ The project is a complete Go web application: the backend, WebSocket hub, and re
 - Visual grid designer for parking, roads, gates, walls, pillars, and no-parking cells
 - Real-time, community-scoped WebSocket updates
 - Transaction-safe self check-in/check-out and administrator overrides
-- Per-slot Go mutexes plus authoritative MySQL row locks and uniqueness constraints
+- Per-slot Go mutexes plus authoritative PostgreSQL row locks and uniqueness constraints
 - Buffered audit channel with a background worker pool and graceful draining
 - Ownership transfer, promotion/demotion, removal, banning, leaving, and access revocation
 - Responsive, accessible classic-modern interface with no frontend build step
@@ -25,8 +25,8 @@ For first-time GitHub publishing, everyday commits, branches, rollback commands,
 ## Technology
 
 - Go 1.24+
-- MySQL 8.0+
-- `database/sql` with `go-sql-driver/mysql`
+- PostgreSQL 17+
+- `database/sql` with `pgx`
 - Gorilla WebSocket
 - Server-embedded HTML, CSS, and JavaScript
 - Docker Compose
@@ -39,12 +39,14 @@ Prerequisites: Docker Desktop with Compose.
 docker compose up --build -d
 ```
 
+Docker Compose runs PostgreSQL 17 on host port `5433`, leaving the standard local PostgreSQL port `5432` available for an existing installation. Inside Docker, the application connects to the database service on port `5432`.
+
 Open <http://localhost:8080>, register an account, create a community, and design its grid.
 
-To create the included demo scenario, run the seed command from the host after MySQL starts:
+To create the included demo scenario, run the seed command from the host after PostgreSQL starts:
 
 ```powershell
-$env:DATABASE_URL='neighborparking:neighborparking@tcp(127.0.0.1:3307)/neighborparking?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci'
+$env:DATABASE_URL='postgres://neighborparking:neighborparking@127.0.0.1:5433/neighborparking?sslmode=disable'
 & 'C:\Program Files\Go\bin\go.exe' run ./cmd/seed
 ```
 
@@ -63,10 +65,10 @@ The final two accounts are persistent test fixtures created by the end-to-end ve
 
 ## Run without Docker
 
-1. Install and start MySQL 8.
+1. Install and start PostgreSQL 17 or newer.
 2. Create a database and application user.
 3. Apply [migrations/001_init.up.sql](./migrations/001_init.up.sql).
-4. Copy `.env.example` to `.env` and change `DATABASE_URL` for the local MySQL instance.
+4. Copy `.env.example` to `.env` and change `DATABASE_URL` for the local PostgreSQL instance.
 5. Run:
 
 ```powershell
@@ -81,7 +83,7 @@ The PowerShell scripts detect Go at `C:\Program Files\Go\bin\go.exe` when it is 
 |---|---|---|
 | `APP_ENV` | `development` | Runtime environment label |
 | `HTTP_ADDR` | `:8080` | HTTP listen address |
-| `DATABASE_URL` | required | MySQL DSN |
+| `DATABASE_URL` | required | PostgreSQL connection URL |
 | `SESSION_TTL` | `168h` | Login-session lifetime |
 | `COOKIE_SECURE` | `false` | Must be `true` behind production HTTPS |
 | `ALLOWED_ORIGIN` | `http://localhost:8080` | Accepted browser and WebSocket origin |
@@ -93,7 +95,7 @@ The PowerShell scripts detect Go at `C:\Program Files\Go\bin\go.exe` when it is 
 
 ```text
 Browser UI
-  ├─ REST snapshot/actions ──> HTTP handlers ──> domain checks ──> MySQL transactions
+  ├─ REST snapshot/actions ──> HTTP handlers ──> domain checks ──> PostgreSQL transactions
   └─ WebSocket subscription <─ community hub <─ committed occupancy/layout events
                                                     │
 HTTP actions ──> buffered audit channel ──> worker goroutines ──> audit_logs
@@ -101,8 +103,8 @@ HTTP actions ──> buffered audit channel ──> worker goroutines ──> au
 
 Important design decisions:
 
-- MySQL is the source of truth. WebSockets notify clients, which refetch authoritative snapshots after connection or reconnection.
-- A local per-slot mutex reduces duplicate work, while MySQL row locks and generated unique guards ensure correctness across multiple requests and server processes.
+- PostgreSQL is the source of truth. WebSockets notify clients, which refetch authoritative snapshots after connection or reconnection.
+- A local per-slot mutex reduces duplicate work, while PostgreSQL row locks and partial unique indexes ensure correctness across multiple requests and server processes.
 - Static structural cells live in layout JSON. Parking-slot identity and live occupancy remain relational. The API merges both into the one map seen by users and admins.
 - Occupancy history stores vehicle snapshots, so historical records remain understandable after profile changes.
 - Sensitive member fields are removed by server-side serializers for regular members.
@@ -120,8 +122,8 @@ internal/httpapi        routes, middleware, handlers, embedded UI
 internal/parking        keyed slot-lock manager
 internal/platform       IDs, normalization, and typed application errors
 internal/realtime       WebSocket hub and client pumps
-internal/store          MySQL queries and business transactions
-migrations              versioned MySQL schema
+internal/store          PostgreSQL queries and business transactions
+migrations              versioned PostgreSQL schema
 scripts                 Windows helpers and headless browser verification
 docs                    OpenAPI contract and verification screenshots
 ```
@@ -153,7 +155,7 @@ Run the Go race detector where CGO is available:
 & 'C:\Program Files\Go\bin\go.exe' test -race ./...
 ```
 
-Tests cover slot-lock serialization, independent locks, layout validation, identifier/token behavior, normalization, and audit-queue draining. Database correctness is additionally enforced by MySQL transactions, foreign keys, checks, and unique generated guards.
+Tests cover PostgreSQL parameter binding, slot-lock serialization, independent locks, layout validation, identifier/token behavior, normalization, and audit-queue draining. Database correctness is additionally enforced by PostgreSQL transactions, foreign keys, checks, and partial unique indexes.
 
 Run the repeatable full-stack verifier against the live application:
 
@@ -176,7 +178,7 @@ It checks login, dashboard rendering, the live map and WebSocket indicator, memb
 Before public deployment:
 
 - Place the app behind HTTPS and set `COOKIE_SECURE=true`.
-- Use strong, managed database credentials and a non-root MySQL account.
+- Use strong, managed PostgreSQL credentials and a restricted application role.
 - Run migrations as an explicit deployment step.
 - Configure database backups and restore drills.
 - Add reverse-proxy request limits and platform-level rate limiting.

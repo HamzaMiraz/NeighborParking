@@ -26,7 +26,7 @@ func (s *Store) Map(ctx context.Context, communityID, viewerID string) (domain.C
 		_ = json.Unmarshal(c.LayoutJSON, &static)
 	}
 	c.Cells = static.Cells
-	rows, err := s.db.QueryContext(ctx, `SELECT ps.id,ps.slot_name,ps.row_idx,ps.col_idx,ps.status,
+	rows, err := s.queryContext(ctx, `SELECT ps.id,ps.slot_name,ps.row_idx,ps.col_idx,ps.status,
       COALESCE(u.id,''),COALESCE(u.full_name,''),COALESCE(u.vehicle_name,''),COALESCE(u.license_plate,''),COALESCE(u.email,''),COALESCE(u.phone,''),o.checked_in_at
       FROM parking_slots ps
       LEFT JOIN users u ON u.id=ps.occupied_by_user_id
@@ -103,7 +103,7 @@ func (s *Store) SaveLayout(ctx context.Context, communityID string, in domain.La
 	if err := validateLayout(in); err != nil {
 		return 0, err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -154,7 +154,7 @@ func (s *Store) SaveLayout(ctx context.Context, communityID string, in domain.La
 			return 0, platform.E(409, "OCCUPIED_SLOT_IMMUTABLE", "Occupied spots cannot be moved, renamed, or removed.")
 		}
 		if !ok {
-			if _, err = tx.ExecContext(ctx, `UPDATE parking_slots SET archived_at=UTC_TIMESTAMP(6) WHERE id=? AND status='AVAILABLE'`, old.ID); err != nil {
+			if _, err = tx.ExecContext(ctx, `UPDATE parking_slots SET archived_at=CURRENT_TIMESTAMP WHERE id=? AND status='AVAILABLE'`, old.ID); err != nil {
 				return 0, err
 			}
 			continue
@@ -180,7 +180,7 @@ func (s *Store) SaveLayout(ctx context.Context, communityID string, in domain.La
 	}
 	layout, _ := json.Marshal(map[string]any{"cells": static})
 	next := current + 1
-	if _, err = tx.ExecContext(ctx, `UPDATE communities SET grid_rows=?,grid_cols=?,layout_json=?,layout_version=? WHERE id=?`, in.Rows, in.Cols, layout, next, communityID); err != nil {
+	if _, err = tx.ExecContext(ctx, `UPDATE communities SET grid_rows=?,grid_cols=?,layout_json=?,layout_version=? WHERE id=?`, in.Rows, in.Cols, string(layout), next, communityID); err != nil {
 		return 0, err
 	}
 	return next, tx.Commit()
@@ -196,7 +196,7 @@ type OccupancyResult struct {
 
 func (s *Store) CheckIn(ctx context.Context, communityID, slotID, targetUserID, actorID, checkType string) (OccupancyResult, error) {
 	var out OccupancyResult
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginTx(ctx, nil)
 	if err != nil {
 		return out, err
 	}
@@ -245,7 +245,7 @@ func (s *Store) CheckIn(ctx context.Context, communityID, slotID, targetUserID, 
 
 func (s *Store) CheckOut(ctx context.Context, communityID, slotID, actorID string, force bool) (OccupancyResult, error) {
 	var out OccupancyResult
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.beginTx(ctx, nil)
 	if err != nil {
 		return out, err
 	}
@@ -268,7 +268,7 @@ func (s *Store) CheckOut(ctx context.Context, communityID, slotID, actorID strin
 	if force {
 		checkoutType = "ADMIN_FORCE"
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE occupancies SET checked_out_at=UTC_TIMESTAMP(6),checked_out_by_user_id=?,checkout_type=? WHERE id=? AND checked_out_at IS NULL`, actorID, checkoutType, occupancyID); err != nil {
+	if _, err = tx.ExecContext(ctx, `UPDATE occupancies SET checked_out_at=CURRENT_TIMESTAMP,checked_out_by_user_id=?,checkout_type=? WHERE id=? AND checked_out_at IS NULL`, actorID, checkoutType, occupancyID); err != nil {
 		return out, err
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE parking_slots SET status='AVAILABLE',occupied_by_user_id=NULL,active_occupancy_id=NULL WHERE id=?`, slotID); err != nil {

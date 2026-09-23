@@ -1,18 +1,17 @@
 services:
-  mysql:
-    image: mysql:8.4
+  postgres:
+    image: postgres:17-alpine
     environment:
-      MYSQL_DATABASE: neighborparking
-      MYSQL_USER: neighborparking
-      MYSQL_PASSWORD: neighborparking
-      MYSQL_ROOT_PASSWORD: local-root-password
+      POSTGRES_DB: neighborparking
+      POSTGRES_USER: neighborparking
+      POSTGRES_PASSWORD: neighborparking
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
       - ./migrations/001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uneighborparking", "-pneighborparking", "--silent"]
+      test: ["CMD-SHELL", "pg_isready -U neighborparking -d neighborparking"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -22,7 +21,7 @@ services:
     environment:
       APP_ENV: development
       HTTP_ADDR: :8080
-      DATABASE_URL: neighborparking:neighborparking@tcp(mysql:3306)/neighborparking?parseTime=true&charset=utf8mb4&collation=utf8mb4_unicode_ci
+      DATABASE_URL: postgres://neighborparking:neighborparking@postgres:5432/neighborparking?sslmode=disable
       SESSION_TTL: 168h
       COOKIE_SECURE: "false"
       ALLOWED_ORIGIN: http://localhost:8080
@@ -31,8 +30,8 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
 
 volumes:
-  mysql_data:
+  postgres_data:

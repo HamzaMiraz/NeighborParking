@@ -46,7 +46,7 @@ In GitHub:
 
 1. Sign in and choose **New repository**.
 2. Use a name such as `NeighborParking`.
-3. Add a short description, for example: `A real-time community parking manager built with Go, MySQL, WebSockets, and Docker.`
+3. Add a short description, for example: `A real-time community parking manager built with Go, PostgreSQL, WebSockets, and Docker.`
 4. Choose **Public** if this is for your CV, or **Private** while it is unfinished.
 5. Do not initialize the GitHub repository with a README, `.gitignore`, or license because those files already exist locally.
 6. Create the repository and copy its HTTPS URL.
